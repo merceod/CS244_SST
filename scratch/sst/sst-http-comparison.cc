@@ -58,7 +58,7 @@ void RunSimulation(HttpVariant variant, const WebWorkload& workload);
 void OutputResults(const std::string& filename);
 
 // Main program
-int main(int argc, char* argv[])
+int main_old(int argc, char* argv[])
 {
   // Command line parameters
   std::string traceFile = "UCB-home-IP-848278026-848292426.tr";
