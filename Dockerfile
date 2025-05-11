@@ -1,13 +1,4 @@
 # Dockerfile for ns-3 with UCB Home internet traces and tools
-# Expected folder structure:
-# /base
-#   /ns-allinone-3.44
-#       /ns-3.44
-#           /scratch(directory containing the experiment)
-#   /tools
-#   /traces
-#   /Dockerfile (this file)
-
 # Command to run
 # docker build . && docker run -it -v ./scratch:/ns-allinone-3.44/ns-3.44/scratch -v ./output:/output $(docker build -q .)
 # This runs the files in scratch directory and outputs the logs to the logs directory
