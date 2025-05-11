@@ -9,7 +9,7 @@
 #   /Dockerfile (this file)
 
 # Command to run
-# docker build . && docker run -it -v $(pwd):/ns-allinone-3.44/ns-3.44/scratch -v $(pwd)/output:/output $(docker build -q .)
+# docker build . && docker run -it -v ./scratch:/ns-allinone-3.44/ns-3.44/scratch -v ./output:/output $(docker build -q .)
 # This runs the files in scratch directory and outputs the logs to the logs directory
 
 FROM ubuntu:latest
