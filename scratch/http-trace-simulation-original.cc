@@ -2,9 +2,6 @@
  * 
  * HTTP/1.0 serial mode simulation using UCB web trace data
  * Fixed version with proper memory management, bounds checking, and request tracking
- * This version is logically the same as http-trace-simulation-original.cc but is 
- * just messier (under development) and has new features like tracking/logging the size of
- * each page in bytes and printing request time in milliseconds (vs. seconds)
  */
 
  #include "ns3/applications-module.h"
@@ -236,21 +233,11 @@
      // Record start time for this request
      page.requests[m_currentRequestIndex].startTime = Simulator::Now();
      
-    //  bool isPrimary = page.requests[m_currentRequestIndex].isPrimary;
-    //  NS_LOG_INFO("Client starting request " << m_currentRequestIndex 
-    //              << " (Primary: " << (isPrimary ? "Yes" : "No") << ") for URL " 
-    //              << page.requests[m_currentRequestIndex].url << " at " 
-    //              << page.requests[m_currentRequestIndex].startTime.GetSeconds() << "s");
-
-    // Replace it with:
-    bool isPrimary = page.requests[m_currentRequestIndex].isPrimary;
-    uint32_t requestSize = page.requests[m_currentRequestIndex].size;  // NEW
-
-    NS_LOG_INFO("Client starting request " << m_currentRequestIndex 
-                << " (Primary: " << (isPrimary ? "Yes" : "No") 
-                << ", Size: " << requestSize << " bytes)"                // NEW
-                << " for URL " << page.requests[m_currentRequestIndex].url 
-                << " at " << page.requests[m_currentRequestIndex].startTime.GetSeconds() << "s");
+     bool isPrimary = page.requests[m_currentRequestIndex].isPrimary;
+     NS_LOG_INFO("Client starting request " << m_currentRequestIndex 
+                 << " (Primary: " << (isPrimary ? "Yes" : "No") << ") for URL " 
+                 << page.requests[m_currentRequestIndex].url << " at " 
+                 << page.requests[m_currentRequestIndex].startTime.GetSeconds() << "s");
      
      // Add a timeout to prevent stalled connections - 5 seconds should be reasonable
      Simulator::Schedule(Seconds(5), &HttpSerialClient::CheckRequestTimeout, this, 
@@ -876,196 +863,90 @@
    // Get completed pages
    std::vector<WebPage> completedPages = client->GetCompletedPages();
    
-  //  // Calculate statistics
-  //  uint32_t completedPageCount = 0;
-  //  double totalPageTime = 0.0;
-  //  uint32_t totalCompletedRequests = 0;
-  //  double totalRequestTime = 0.0;
+   // Calculate statistics
+   uint32_t completedPageCount = 0;
+   double totalPageTime = 0.0;
+   uint32_t totalCompletedRequests = 0;
+   double totalRequestTime = 0.0;
    
-  //  for (const auto& page : completedPages) {
-  //    bool pageHasEndTime = false;
-  //    Time pageStartTime = Seconds(0);
-  //    Time pageEndTime = Seconds(0);
-  //    uint32_t pageCompletedRequests = 0;
+   for (const auto& page : completedPages) {
+     bool pageHasEndTime = false;
+     Time pageStartTime = Seconds(0);
+     Time pageEndTime = Seconds(0);
+     uint32_t pageCompletedRequests = 0;
      
-  //    // Find page start time (primary request start)
-  //    for (const auto& req : page.requests) {
-  //      if (req.isPrimary) {
-  //        if (!req.startTime.IsZero()) {
-  //          pageStartTime = req.startTime;
-  //        } else if (!req.completeTime.IsZero()) {
-  //          // If primary has completion time but no start time, approximate
-  //          pageStartTime = req.completeTime - MilliSeconds(100);
-  //        }
-  //        break;
-  //      }
-  //    }
+     // Find page start time (primary request start)
+     for (const auto& req : page.requests) {
+       if (req.isPrimary) {
+         if (!req.startTime.IsZero()) {
+           pageStartTime = req.startTime;
+         } else if (!req.completeTime.IsZero()) {
+           // If primary has completion time but no start time, approximate
+           pageStartTime = req.completeTime - MilliSeconds(100);
+         }
+         break;
+       }
+     }
      
-  //    // Find page end time (latest request completion)
-  //    for (const auto& req : page.requests) {
-  //      if (!req.completeTime.IsZero() && req.completeTime > Seconds(0)) {
-  //        pageCompletedRequests++;
+     // Find page end time (latest request completion)
+     for (const auto& req : page.requests) {
+       if (!req.completeTime.IsZero() && req.completeTime > Seconds(0)) {
+         pageCompletedRequests++;
          
-  //        // Only count request time if we have both start and complete times
-  //        if (!req.startTime.IsZero()) {
-  //          Time requestTime = req.completeTime - req.startTime;
-  //          // Sanity check for negative times
-  //          if (requestTime.GetSeconds() > 0) {
-  //            totalRequestTime += requestTime.GetSeconds();
-  //          }
-  //        }
+         // Only count request time if we have both start and complete times
+         if (!req.startTime.IsZero()) {
+           Time requestTime = req.completeTime - req.startTime;
+           // Sanity check for negative times
+           if (requestTime.GetSeconds() > 0) {
+             totalRequestTime += requestTime.GetSeconds();
+           }
+         }
          
-  //        if (pageEndTime.IsZero() || req.completeTime > pageEndTime) {
-  //          pageEndTime = req.completeTime;
-  //          pageHasEndTime = true;
-  //        }
-  //      }
-  //    }
+         if (pageEndTime.IsZero() || req.completeTime > pageEndTime) {
+           pageEndTime = req.completeTime;
+           pageHasEndTime = true;
+         }
+       }
+     }
      
-  //    // More lenient page completion check:
-  //    // Count page as complete if:
-  //    // 1. The page has a start time (either real or estimated) 
-  //    // 2. The page has an end time
-  //    // 3. At least one request completed
-  //    if ((!pageStartTime.IsZero() || pageHasEndTime) && pageCompletedRequests > 0) {
-  //      // If no start time but we have end time, estimate start time
-  //      if (pageStartTime.IsZero() && pageHasEndTime) {
-  //        pageStartTime = pageEndTime - MilliSeconds(500);
-  //      }
+     // More lenient page completion check:
+     // Count page as complete if:
+     // 1. The page has a start time (either real or estimated) 
+     // 2. The page has an end time
+     // 3. At least one request completed
+     if ((!pageStartTime.IsZero() || pageHasEndTime) && pageCompletedRequests > 0) {
+       // If no start time but we have end time, estimate start time
+       if (pageStartTime.IsZero() && pageHasEndTime) {
+         pageStartTime = pageEndTime - MilliSeconds(500);
+       }
        
-  //      // Calculate page load time
-  //      double pageTime = (pageEndTime - pageStartTime).GetSeconds();
+       // Calculate page load time
+       double pageTime = (pageEndTime - pageStartTime).GetSeconds();
        
-  //      // Only count if page time is positive
-  //      if (pageTime > 0) {
-  //        totalPageTime += pageTime;
-  //        completedPageCount++;
+       // Only count if page time is positive
+       if (pageTime > 0) {
+         totalPageTime += pageTime;
+         completedPageCount++;
          
-  //        std::cout << "Page " << completedPageCount << " (" << page.requests.size() 
-  //                  << " requests): " << pageTime << " seconds (" 
-  //                  << pageCompletedRequests << "/" << page.requests.size() 
-  //                  << " requests completed)" << std::endl;
-  //      }
-  //    }
+         std::cout << "Page " << completedPageCount << " (" << page.requests.size() 
+                   << " requests): " << pageTime << " seconds (" 
+                   << pageCompletedRequests << "/" << page.requests.size() 
+                   << " requests completed)" << std::endl;
+       }
+     }
      
-  //    totalCompletedRequests += pageCompletedRequests;
-  //  }
-
-
-  // Calculate statistics
-  uint32_t completedPageCount = 0;
-  double totalPageTime = 0.0;
-  uint32_t totalCompletedRequests = 0;
-  double totalRequestTime = 0.0;
-
-  for (const auto& page : completedPages) {
-    bool pageHasEndTime = false;
-    Time pageStartTime = Seconds(0);
-    Time pageEndTime = Seconds(0);
-    uint32_t pageCompletedRequests = 0;
-    uint32_t totalPageSize = 0;          // NEW: Total size of all requests in page
-    uint32_t completedPageSize = 0;      // NEW: Size of completed requests only
-    
-    // Find page start time (primary request start)
-    for (const auto& req : page.requests) {
-      if (req.isPrimary) {
-        if (!req.startTime.IsZero()) {
-          pageStartTime = req.startTime;
-        } else if (!req.completeTime.IsZero()) {
-          // If primary has completion time but no start time, approximate
-          pageStartTime = req.completeTime - MilliSeconds(100);
-        }
-        break;
-      }
-    }
-    
-    // Find page end time and calculate sizes
-    for (const auto& req : page.requests) {
-      totalPageSize += req.size;  // NEW: Add up all request sizes
-      
-      if (!req.completeTime.IsZero() && req.completeTime > Seconds(0)) {
-        pageCompletedRequests++;
-        completedPageSize += req.size;  // NEW: Add up completed request sizes
-        
-        // Only count request time if we have both start and complete times
-        if (!req.startTime.IsZero()) {
-          Time requestTime = req.completeTime - req.startTime;
-          // Sanity check for negative times
-          if (requestTime.GetSeconds() > 0) {
-            totalRequestTime += requestTime.GetSeconds();
-          }
-        }
-        
-        if (pageEndTime.IsZero() || req.completeTime > pageEndTime) {
-          pageEndTime = req.completeTime;
-          pageHasEndTime = true;
-        }
-      }
-    }
-    
-    // More lenient page completion check:
-    // Count page as complete if:
-    // 1. The page has a start time (either real or estimated) 
-    // 2. The page has an end time
-    // 3. At least one request completed
-    if ((!pageStartTime.IsZero() || pageHasEndTime) && pageCompletedRequests > 0) {
-      // If no start time but we have end time, estimate start time
-      if (pageStartTime.IsZero() && pageHasEndTime) {
-        pageStartTime = pageEndTime - MilliSeconds(500);
-      }
-      
-      // Calculate page load time
-      double pageTime = (pageEndTime - pageStartTime).GetSeconds();
-      
-      // Only count if page time is positive
-      if (pageTime > 0) {
-        totalPageTime += pageTime;
-        completedPageCount++;
-        
-        // // MODIFIED: Enhanced output with size information
-        // std::cout << "Page " << completedPageCount << " (" << page.requests.size() 
-        //           << " requests): " << pageTime << " seconds (" 
-        //           << pageCompletedRequests << "/" << page.requests.size() 
-        //           << " requests completed)"
-        //           << " - Total size: " << totalPageSize << " bytes"
-        //           << " - Completed size: " << completedPageSize << " bytes"
-        //           << std::endl;
-
-        // Convert to milliseconds for more readable precision
-        double pageTimeMs = pageTime * 1000.0;
-  
-        std::cout << "Page " << completedPageCount << " (" << page.requests.size() 
-                  << " requests): " << pageTimeMs << " ms (" 
-                  << pageCompletedRequests << "/" << page.requests.size() 
-                  << " requests completed)"
-                  << " - Total size: " << totalPageSize << " bytes"
-                  << " - Completed size: " << completedPageSize << " bytes"
-                  << std::endl;
-      }
-    }
-    
-    totalCompletedRequests += pageCompletedRequests;
-  }
+     totalCompletedRequests += pageCompletedRequests;
+   }
    
-  //  if (completedPageCount > 0) {
-  //    std::cout << "\nAverage page load time: " << (totalPageTime / completedPageCount) 
-  //              << " seconds" << std::endl;
-  //    std::cout << "Completed " << completedPageCount << " out of " 
-  //              << pages.size() << " pages (" 
-  //              << (completedPageCount * 100.0 / pages.size()) << "%)" << std::endl;
-  //  } else {
-  //    std::cout << "No pages completed" << std::endl;
-  //  }
-
-  if (completedPageCount > 0) {
-    double avgPageTimeMs = (totalPageTime / completedPageCount) * 1000.0;
-    std::cout << "\nAverage page load time: " << avgPageTimeMs << " ms" << std::endl;
-    std::cout << "Completed " << completedPageCount << " out of " 
-              << pages.size() << " pages (" 
-              << (completedPageCount * 100.0 / pages.size()) << "%)" << std::endl;
-  } else {
-    std::cout << "No pages completed" << std::endl;
-  }
+   if (completedPageCount > 0) {
+     std::cout << "\nAverage page load time: " << (totalPageTime / completedPageCount) 
+               << " seconds" << std::endl;
+     std::cout << "Completed " << completedPageCount << " out of " 
+               << pages.size() << " pages (" 
+               << (completedPageCount * 100.0 / pages.size()) << "%)" << std::endl;
+   } else {
+     std::cout << "No pages completed" << std::endl;
+   }
    
    if (totalCompletedRequests > 0) {
      std::cout << "Average request time: " << (totalRequestTime / totalCompletedRequests) 
