@@ -72,5 +72,9 @@ RUN wget ftp://ita.ee.lbl.gov/traces/UCB-home-IP-848004424-848409417.tr.gz
 # Set the entry point
 WORKDIR /ns-allinone-3.44/ns-3.44
 ENTRYPOINT ["./ns3", "run", "scratch/http-trace-simulation --traceFile=/traces/small_traces.txt --mode=serial --bandwidth=1.5Mbps --delay=50ms —-time=10 --maxPages=0"]
+# ENTRYPOINT ["./ns3", "run", "scratch/http-parallel-simulation --traceFile=/traces/small_traces.txt --mode=serial --bandwidth=1.5Mbps --delay=50ms —-time=10 --maxPages=0"]
+# ENTRYPOINT ["./ns3", "run", "scratch/http-persistent-simulation --traceFile=/traces/small_traces.txt --mode=serial --bandwidth=1.5Mbps --delay=50ms —-time=10 --maxPages=0"]
+# ENTRYPOINT ["./ns3", "run", "scratch/http-pipelined-simulation --traceFile=/traces/small_traces.txt --mode=serial --bandwidth=1.5Mbps --delay=50ms —-time=10 --maxPages=0"]
+# ENTRYPOINT ["./ns3", "run", "scratch/http-sst-simulation --traceFile=/traces/small_traces.txt --mode=serial --bandwidth=1.5Mbps --delay=50ms —-time=10 --maxPages=0"]
 # ENTRYPOINT [ "bash" ]
 
