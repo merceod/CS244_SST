@@ -113,9 +113,16 @@ def create_plot(data_sets, labels):
             sizes = [page['total_size'] for page in group_pages]
             times = [page['time_ms'] for page in group_pages]
             
-            # Plot the data points
-            ax.scatter(sizes, times, c=color, marker=marker, s=50, alpha=0.7, 
-                      label=label)
+            # Plot the data points with appropriate marker styles
+            # Some markers ('+', 'x') are line-based and can't be hollow
+            if marker in ['+', 'x']:
+                ax.scatter(sizes, times, c=color, marker=marker, s=50, alpha=0.7, 
+                          linewidths=0.8, label=label)
+            else:
+                # Shape-based markers can be made hollow
+                ax.scatter(sizes, times, facecolors='none', edgecolors=color, 
+                          marker=marker, s=50, alpha=0.7, linewidths=0.8,
+                          label=label)
         
         # Customize each subplot
         ax.set_xscale('log')
@@ -131,11 +138,16 @@ def create_plot(data_sets, labels):
         ax.set_xticks([128, 1000, 8000, 64000])
         ax.set_xticklabels(['128B', '1K', '8K', '64K'])
         
+        # Set y-ticks for all subplots to ensure consistent formatting
+        ax.set_yticks([60, 100, 200, 400, 600, 1000, 2000, 4000])
+        ax.set_yticklabels(['60ms', '100ms', '200ms', '400ms', '600ms', '1s', '2s', '4s'])
+        
         # Only show y-tick labels on the leftmost subplot
         if subplot_idx == 0:
-            ax.set_yticks([60, 100, 200, 400, 600, 1000, 2000, 4000])
-            ax.set_yticklabels(['60ms', '100ms', '200ms', '400ms', '600ms', '1s', '2s', '4s'])
             ax.set_ylabel('Request + Response Time', fontsize=12)
+        else:
+            # Hide y-tick labels for other subplots using tick_params
+            ax.tick_params(axis='y', labelleft=False)
         
         # Set x-label for all subplots
         ax.set_xlabel('Total Bytes Transferred', fontsize=10)
@@ -240,4 +252,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
